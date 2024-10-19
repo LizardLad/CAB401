@@ -7,6 +7,9 @@ project(ThreadPoolProject)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# Set the build type to Debug
+set(CMAKE_BUILD_TYPE Debug)
+
 # Generate compile_commands.json for IntelliSense
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

@@ -24,7 +24,7 @@ struct msg_t {
     enum msg_type type;    
     union {
         struct {
-            Data* data;
+            Data *data;
         } data;
         struct {
             Frequency* frequency_p;
@@ -72,9 +72,9 @@ void train_vocab_worker(void *data) {
                 case DATA:
                     {
                         //Do something with the data
-                        Data data = *msg.msg.data.data;
-                        tokeniser.inplace_transform(data);
-                        tokeniser.count_pairs(data, *frequency_p);
+                        Data *data_p = msg.msg.data.data;
+                        tokeniser.inplace_transform(data_p);
+                        tokeniser.count_pairs(data_p, *frequency_p);
                         tokeniser.update_vocab(*frequency_p);
                     } 
                     break;

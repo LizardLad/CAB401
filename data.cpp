@@ -2,7 +2,23 @@
 #include <data.hpp>
 #include <fstream>
 
+Data::Data() {
+    this->source = SRC_MOVED;
+    this->buff = nullptr;
+    this->buff_size = 0;
+    this->max_chunk_size = 0;
+}
+
+Data::Data(VOCAB_DTYPE *data, size_t size, size_t max_chunk_size) {
+    this->max_chunk_size = max_chunk_size;
+    this->source = SRC_CHUNK;
+    this->buff_size = size;
+    this->buff = data;
+}
+
 Data::Data(char *data, size_t size, size_t max_chunk_size) {
+    this->source = SRC_BLOB;
+
     this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * size);
     if(this->buff == NULL) {
         throw std::runtime_error("Failed to allocate memory for data");
@@ -13,11 +29,12 @@ Data::Data(char *data, size_t size, size_t max_chunk_size) {
     for(size_t i = 0; i < size; i++) {
         this->buff[i] = (VOCAB_DTYPE)data[i];
     }
-    this->source = SRC_BLOB;
+    
 }
 
 Data::Data(char *filename, size_t max_chunk_size) {
     this->source = SRC_FILE;
+
     this->max_chunk_size = max_chunk_size;
 
     //Get file size
@@ -41,11 +58,7 @@ Data::Data(char *filename, size_t max_chunk_size) {
 }
 
 Data::~Data() {
-    if(this->source == SRC_BLOB) {
-        free(this->buff);
-    }
-
-    if(this->source == SRC_FILE) {
+    if(this->source == SRC_BLOB || this->source == SRC_FILE) {
         free(this->buff);
     }
 }
@@ -65,16 +78,14 @@ void Data::shrink() {
     } //Doesn't really matter if it fails because the new size is smaller
 }
 
-Data::Data(VOCAB_DTYPE *data, size_t size, size_t max_chunk_size) {
-    this->max_chunk_size = max_chunk_size;
-    this->source = SRC_CHUNK;
-    this->buff_size = size;
-    this->buff = data;
-}
+
 
 Data Data::get_chunk(size_t idx) {
+    if(this->source == SRC_MOVED) {
+        throw std::runtime_error("Cannot get chunk from moved data");
+    }
     if(this->source == SRC_CHUNK) {
-        return *this;
+        return std::move(*this);
     }
     
     size_t start = idx * this->max_chunk_size;
@@ -95,4 +106,60 @@ size_t Data::chunks() {
         return floor + 1;
     }
     return floor;
+}
+
+Data::Data(Data &&other) noexcept {
+    this->buff = other.buff;
+    this->buff_size = other.buff_size;
+    this->source = other.source;
+    this->max_chunk_size = other.max_chunk_size;
+
+    other.buff = nullptr;
+    other.buff_size = 0;
+    other.source = SRC_MOVED;
+    other.max_chunk_size = 0;
+}
+
+
+Data::Data(const Data &other) {
+    this->buff_size = other.buff_size;
+    this->max_chunk_size = other.max_chunk_size;
+    this->source = other.source;
+
+    if(other.buff) {
+        this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * other.buff_size);
+        if(this->buff == NULL) {
+            throw std::runtime_error("Failed to allocate memory for data");
+        }
+        std::copy(other.buff, other.buff + other.buff_size, this->buff);
+    } else {
+        this->buff = nullptr;
+    }
+}
+
+// Copy assignment operator
+Data& Data::operator=(const Data &other) {
+    if(this == &other) {
+        return *this;
+    }
+    if(this->source == SRC_BLOB || this->source == SRC_FILE) {
+        free(this->buff);
+    }
+
+    this->buff_size = other.buff_size;
+    this->max_chunk_size = other.max_chunk_size;
+    this->source = other.source;
+
+    if(other.buff) {
+        this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * other.buff_size);
+        if(this->buff == NULL) {
+            throw std::runtime_error("Failed to allocate memory for data");
+        }
+        std::copy(other.buff, other.buff + other.buff_size, this->buff);
+        this->source = SRC_BLOB;
+    } else {
+        this->buff = nullptr;
+    }
+
+    return *this;
 }

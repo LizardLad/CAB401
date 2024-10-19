@@ -18,21 +18,22 @@ Dataset::~Dataset() {
 void Dataset::prepare_chunks() {
     //Before executing this make sure the tokeniser has been run on the data
     chunk_views.clear();
-    for (Data d: this->data) {
-        for (size_t i = 0; i < d.chunks(); i++) {
-            this->chunk_views.push_back(d.get_chunk(i));
+    for (size_t i = 0; i < data.size(); i++) {
+        for (size_t j = 0; j < data[i].chunks(); j++) {
+            Data chunk = data[i].get_chunk(j);
+            this->chunk_views.push_back(std::move(chunk));
         }
     }
 }
 
 void Dataset::shuffle() {
-    for (size_t i = this->chunk_views.size(); i > 0; i++) {
+    for (size_t i = this->chunk_views.size() - 1; i > 0; i--) {
         size_t j = rand() % i;
         std::swap(this->chunk_views[i], this->chunk_views[j]);
     }
 }
 
-Data Dataset::yeild() {
+Data& Dataset::yeild() {
     size_t idx;
     pthread_mutex_lock(&this->lock);
     idx = this->cur;
@@ -57,9 +58,6 @@ const Data& Dataset::operator[] (size_t idx) const {
 Data& Dataset::operator[] (size_t idx) {
     return this->chunk_views[idx];
 }
-
-
-
 
 DatasetFiles::DatasetFiles(size_t chunk_size, std::vector<char *> filepaths) {
     for (char *filepath: filepaths) {

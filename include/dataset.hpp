@@ -25,7 +25,7 @@ class Dataset
         const Data& operator[] (size_t idx) const;
         Data& operator[] (size_t idx);
 
-        Data yeild();
+        Data &yeild();
         size_t size();
 };
 

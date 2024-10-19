@@ -9,7 +9,8 @@
 enum DataSource {
     SRC_FILE,
     SRC_BLOB,
-    SRC_CHUNK
+    SRC_CHUNK,
+    SRC_MOVED
 };
 
 class Data
@@ -18,15 +19,21 @@ class Data
         VOCAB_DTYPE *buff;
         size_t buff_size;
 
-        enum DataSource source;
         size_t max_chunk_size;
 
     public:
+        enum DataSource source;
+        
+        Data();
         Data(char *data, size_t size, size_t max_chunk_size);
         Data(char *filename, size_t max_chunk_size); //From file
         Data(VOCAB_DTYPE *data, size_t size, size_t max_chunk_size); //From another data object to create chunks
 
         ~Data();
+        Data(Data &&other) noexcept; //Move
+
+        Data(const Data &other); // Copy constructor
+        Data& operator=(const Data &other); // Copy assignment operator
 
         VOCAB_DTYPE& operator[] (size_t idx) {
             assert(idx < this->buff_size);
