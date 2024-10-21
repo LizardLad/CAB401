@@ -26,6 +26,7 @@ class Tokeniser {
         std::vector<struct Token> vocab;
 
         Tokeniser(VOCAB_DTYPE initial_size);
+        Tokeniser(VOCAB_DTYPE initial_size, std::vector<struct Token> vocab);
         ~Tokeniser();
 
         void inplace_transform(Data *data);

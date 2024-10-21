@@ -68,3 +68,9 @@ void Tokeniser::update_vocab(Frequency frequency) {
     Token token = {{max_pair[0], max_pair[1]}, (VOCAB_DTYPE)(vocab.size() + (size_t)initial_size)};
     vocab.push_back(token);
 }
+
+
+Tokeniser::Tokeniser(VOCAB_DTYPE initial_size, std::vector<struct Token> vocab) {
+    this->initial_size = initial_size;
+    this->vocab = vocab;
+}
