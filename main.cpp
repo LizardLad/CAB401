@@ -14,32 +14,10 @@
 #include <data.hpp>
 #include <args.hpp>
 
-enum msg_type {
-    DATA,
-    DATA_FIN,
-    FREQUENCY_REPLY,
-    FREQUENCY_REQUEST,
-    EXIT,
-};
-
-struct msg_t {
-    pthread_mutex_t lock;
-    sem_t sem_worker; //Semaphore to signal that the worker is ready to receive a message
-    sem_t sem_main; //Semaphore to signal that the main thread is ready to receive a message
-    enum msg_type type;    
-    union {
-        struct {
-            Data *data;
-        } data;
-        struct {
-            Frequency* frequency_p;
-        } frequency;
-    } msg;
-};
 
 int main(int argc, char **argv, char **envp) {
-    const uint32_t processor_count = std::thread::hardware_concurrency();
-    ThreadPool pool(processor_count);
+    const uint32_t processor_count = 2;//std::thread::hardware_concurrency();
+    ThreadPool *pool = new ThreadPool(processor_count);
 
     if(argc < 3) {
         fprintf(stderr, "Incorrect number of arguments provided, expect at least mode and project\n");
@@ -62,28 +40,14 @@ int main(int argc, char **argv, char **envp) {
 
     switch(command_line_args.mode) {
         case MODE_TRAIN:
-        {
-            train(command_line_args, processor_count);
-            
-        }
-        break;
+            train(command_line_args, processor_count, pool);
+            break;
         case MODE_STATUS:
             break;
         default:
             fprintf(stderr, "Bad mode\n");
             break;
     }
-
-    /*for(int i = 0; i < 128; i++) {
-        uint64_t *target = (uint64_t *)malloc(sizeof(uint64_t));
-        if(target == NULL) {
-            exit(150);
-        }
-        *target = 1LLU << 32;
-    
-        struct work_t data = {.fn=sum_vocab_worker, .data=(void*)target};
-        pool.send(data);
-    }*/
 
     return 0;
 }

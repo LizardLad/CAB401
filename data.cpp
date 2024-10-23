@@ -128,6 +128,7 @@ Data::Data(const Data &other) {
 
     if(other.buff) {
         this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * other.buff_size);
+        this->source = SRC_BLOB;
         if(this->buff == NULL) {
             throw std::runtime_error("Failed to allocate memory for data");
         }

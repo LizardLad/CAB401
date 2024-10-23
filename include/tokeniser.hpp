@@ -5,13 +5,8 @@
 
 #include <data.hpp>
 #include <config.hpp>
-
-struct vocab_file_header_t {
-    char preamble[5]; //{'V', 'O', 'C', 'A', 'B'}
-    bool complete;
-    uint16_t len;
-    uint16_t desired_len;
-};
+#include <frequency.hpp>
+#include <vocab.hpp>
 
 struct Token {
     VOCAB_DTYPE pair[2];
@@ -30,8 +25,9 @@ class Tokeniser {
         ~Tokeniser();
 
         void inplace_transform(Data *data);
-        void update_vocab(Frequency frequency);
-        void count_pairs(Data *data, Frequency frequency);
+        void update_vocab(Frequency *frequency);
+        void count_pairs(Data *data, Frequency *frequency);
+        void write_vocab(char *vocab_file, VOCAB_DTYPE desired_len);
 };
 
 #endif

@@ -1,12 +1,15 @@
 #include <vector>
 #include <unordered_map>
-#include <config.hpp>
-#include <data.hpp>
-#include <stddef.h>
-#include <frequency.hpp>
-
-#include <tokeniser.hpp>
 #include <stdexcept>
+
+#include <stddef.h>
+
+#include <data.hpp>
+#include <vocab.hpp>
+#include <config.hpp>
+#include <frequency.hpp>
+#include <tokeniser.hpp>
+
 
 Tokeniser::Tokeniser(VOCAB_DTYPE initial_size = VOCAB_START) {
     this->initial_size = initial_size;
@@ -44,8 +47,8 @@ void Tokeniser::inplace_transform(Data *data) {
     }
 }
 
-void Tokeniser::count_pairs(Data *data, Frequency frequency) {
-    for(int i = 0; i < data->size()-1; i++) {
+void Tokeniser::count_pairs(Data *data, Frequency *frequency) {
+    for(size_t i = 0; i < data->size()-1; i++) {
         if(data->operator[](i) == SKIP_TOKEN) {
             continue;
         }
@@ -54,14 +57,16 @@ void Tokeniser::count_pairs(Data *data, Frequency frequency) {
             if(data->operator[](i) == SKIP_TOKEN) {
                 continue;
             }
-            frequency(token, data->operator[](i))++;
+            //printf("Counting pair %d %d\n", token, data->operator[](i));
+            frequency->operator()(token, data->operator[](i))++;
+            break;
         }
     }
 }
 
-void Tokeniser::update_vocab(Frequency frequency) {
+void Tokeniser::update_vocab(Frequency *frequency) {
     VOCAB_DTYPE max_pair[2];
-    frequency.get_max_pair(max_pair);
+    frequency->get_max_pair(max_pair);
     if(vocab.size() + (size_t)initial_size > SKIP_TOKEN) {
         throw std::runtime_error("Vocab size is too large to fit in the data type");
     }
@@ -73,4 +78,28 @@ void Tokeniser::update_vocab(Frequency frequency) {
 Tokeniser::Tokeniser(VOCAB_DTYPE initial_size, std::vector<struct Token> vocab) {
     this->initial_size = initial_size;
     this->vocab = vocab;
+}
+
+#define TEMP_NAME_LEN 10
+
+void Tokeniser::write_vocab(char *vocab_file, VOCAB_DTYPE desired_len) {
+    char tmp_name[TEMP_NAME_LEN]; tmp_name[TEMP_NAME_LEN-1] = '\0';
+    for(size_t i = 0; i < TEMP_NAME_LEN-1; i++) {
+        tmp_name[i] = 65 + (rand() % 26);
+    }
+
+    FILE *vocab_file_p = fopen(tmp_name, "wb");
+    struct vocab_file_header_t header = {.preamble={'V', 'O', 'C', 'A', 'B'}, 
+    .complete=(vocab.size()==desired_len), 
+    .len = (VOCAB_DTYPE)vocab.size(), 
+    .desired_len=desired_len};
+
+    fwrite(&header, sizeof(struct vocab_file_header_t), 1, vocab_file_p);
+    for(size_t i = 0; i < vocab.size(); i++) {
+        fwrite(&vocab[i], sizeof(struct Token), 1, vocab_file_p);
+    }
+
+    //Move the file (atomic)
+    fclose(vocab_file_p);
+    rename(tmp_name, vocab_file);
 }

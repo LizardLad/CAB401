@@ -1,7 +1,8 @@
-#include <threadpool.hpp>
 #include <cstddef>
 #include <cstdlib>
 #include <stdio.h>
+
+#include <threadpool.hpp>
 
 ThreadPool::ThreadPool(size_t size){
     this->size = size;
@@ -88,23 +89,24 @@ bool ThreadPool::send(struct work_t work) {
 
     this->work_buff[this->in] = work;
     this->in = next_in;
-    sem_post(&(this->work_sem));
 
     pthread_mutex_unlock(&this->lock);
+    sem_post(&(this->work_sem));
+    
     return true;
 }
 
 struct work_t ThreadPool::recv() {
     struct work_t work = {.fn = nullptr, .data=nullptr};
-
+    
     sem_wait(&(this->work_sem));
     pthread_mutex_lock(&(this->lock));
 
     work = this->work_buff[this->out];
     this->out = (this->out + 1) % QUEUE_SIZE;
-    sem_post(&(this->space_sem));
 
     pthread_mutex_unlock(&this->lock);
+    sem_post(&(this->space_sem));
 
     return work;
 }

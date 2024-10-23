@@ -1,6 +1,8 @@
 #ifndef ARGS_HPP
 #define ARGS_HPP
 
+#include <stdint.h>
+
 enum MODE {
     MODE_STATUS,
     MODE_TRAIN

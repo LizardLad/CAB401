@@ -15,18 +15,23 @@
 #include <queue.hpp>
 #include <args.hpp>
 
+enum msg_type {
+    DATA,
+    DATA_FIN,
+};
+
 struct sum_vocab_arg {
     Queue<Frequency *> *queue;
     pthread_mutex_t *lock;
     sem_t *sums_finished;
     size_t *sums_occured;
-    size_t *target_sums;
+    uint32_t target_sums;
 };
 
 void sum_vocab_worker(void *data) {
     struct sum_vocab_arg *arg_p = (struct sum_vocab_arg *)data;
     Queue<Frequency *> *queue = arg_p->queue;
-    free(arg_p);
+    
 
     //Consume queue
     std::vector<Frequency *> frequencies = queue->popn(2);
@@ -38,29 +43,23 @@ void sum_vocab_worker(void *data) {
     
     pthread_mutex_lock(arg_p->lock);
     (*arg_p->sums_occured)++;
-    if(*arg_p->sums_occured == *arg_p->target_sums) {
+    if(*arg_p->sums_occured == (size_t)arg_p->target_sums) {
         sem_post(arg_p->sums_finished);
     }
     pthread_mutex_unlock(arg_p->lock);
 
+    free(arg_p);
     return;
 }
 
 struct train_msg_t {
     enum msg_type type;
-    union {
-        struct {
-            Data *data;
-        } data;
-        struct {
-            Frequency *frequency_p;
-        } frequency;
-    } body;
+    Data *data;
 };
 
 struct train_arg {
     Queue<struct train_msg_t> *queue;
-    Queue<struct train_msg_t> *reply;
+    Queue<Frequency *> *reply;
     VOCAB_DTYPE current_vocab_size;
     VOCAB_DTYPE initial_size_of_vocab;
     std::vector<struct Token> *vocab;
@@ -71,7 +70,7 @@ void train_vocab_worker(void *data) {
     
     VOCAB_DTYPE current_vocab_size = arg_p->current_vocab_size;
     Queue<struct train_msg_t> *queue = arg_p->queue;
-    Queue<struct train_msg_t> *reply = arg_p->reply;
+    Queue<Frequency *> *reply = arg_p->reply;
     Tokeniser tokeniser(arg_p->initial_size_of_vocab, *arg_p->vocab); //Initial size of 256 for the vocab
 
     free(arg_p);
@@ -79,34 +78,24 @@ void train_vocab_worker(void *data) {
     Frequency *frequency_p = new Frequency(current_vocab_size); //Initialise the frequency object with the max size
 
     while(true) {
-        sem_wait(&msg_p->sem_worker);
-        pthread_mutex_lock(&msg_p->lock);
+        struct train_msg_t msg = queue->pop();
 
-        switch(msg_p->type) {
+        switch(msg.type) {
             case DATA:
-                {
-                    //Do something with the data
-                    Data *data_p = msg_p->msg.data.data;
-                    tokeniser.inplace_transform(data_p);
-                    tokeniser.count_pairs(data_p, *frequency_p);
-                    tokeniser.update_vocab(*frequency_p);
-                    msg_p->type = DATA_FIN;
-                } 
+                tokeniser.inplace_transform(msg.data);
+                tokeniser.count_pairs(msg.data, frequency_p);
                 break;
-            case FREQUENCY_REQUEST:
-                {
-                    //Send the frequency object back
-                    msg_p->type = FREQUENCY_REPLY;
-                    msg_p->msg.frequency.frequency_p = frequency_p;
-                }
+            case DATA_FIN:
+                reply->push(frequency_p);
+                
                 return;
         }
-        pthread_mutex_unlock(&msg_p->lock);
-        sem_post(&msg_p->sem_main);
     }
+    free(arg_p);
+    return;
 }
 
-int train(struct command_line_args command_line_args, uint32_t processor_count, ThreadPool pool) {
+int train(struct command_line_args command_line_args, uint32_t processor_count, ThreadPool *pool) {
     if(command_line_args.vocab_size <= 256) {
         fprintf(stderr, "Vocab count too low\n");
         exit(7);
@@ -138,7 +127,7 @@ int train(struct command_line_args command_line_args, uint32_t processor_count, 
 
         //Initialize the Queues
         Queue<struct train_msg_t> comms_queue(QUEUE_SIZE);
-        Queue<struct train_msg_t> reply_queue(QUEUE_SIZE);
+        Queue<Frequency *> reply_queue(QUEUE_SIZE, true);
 
         for(size_t j = 0; j < processor_count; j++) {
             struct train_arg *arg = (struct train_arg *)malloc(sizeof(struct train_arg));
@@ -154,54 +143,56 @@ int train(struct command_line_args command_line_args, uint32_t processor_count, 
 
             //
             struct work_t data = {.fn=train_vocab_worker, .data=(void*)arg};
-            pool.send(data);
+            pool->send(data);
         }
 
         for(size_t j = 0; j < dataset.size(); j++) {
-            Data data = dataset.yeild();
-            struct train_msg_t msg = {.type=DATA, .body.data.data=&data};
+            Data *data = dataset.yeild(); //FIXME if this goes out of scope before being processed it is a use after free
+            struct train_msg_t msg = {.type=DATA, .data=data};
             comms_queue.push(msg);
         }
 
         for(size_t j = 0; j < processor_count; j++) { //Send the request for the frequency object
-            struct train_msg_t msg = {.type=FREQUENCY_REQUEST};
+            struct train_msg_t msg = {.type=DATA_FIN};
             comms_queue.push(msg);
         }
 
         //Receive them back
         size_t processed = 0;
-        Queue<Frequency *> reply_queue(QUEUE_SIZE);
+        size_t target_sums = processor_count-1; //Number of workers that have a frequency object that can be summed together to make the final frequency object
 
         //Set up the sum workers
-        for(size_t j = 0; j < processor_count; j++) {
+        pthread_mutex_t sum_worker_lock;
+        pthread_mutex_init(&sum_worker_lock, nullptr);
+
+        sem_t sums_finished;
+        sem_init(&sums_finished, 0, 0);
+
+        for(size_t j = 0; j < target_sums; j++) {
             struct sum_vocab_arg *arg = (struct sum_vocab_arg *)malloc(sizeof(struct sum_vocab_arg));
             if(arg == nullptr) {
                 exit(150);
             }
-
             
+
+            arg->lock = &sum_worker_lock;
+            arg->queue = &reply_queue;
+            arg->sums_finished = &sums_finished;
+            arg->sums_occured = &processed;
+            arg->target_sums = target_sums;
+
             struct work_t data = {.fn=sum_vocab_worker, .data=(void*)arg};
-            pool.send(data);
+            pool->send(data);
         }
+        sem_wait(&sums_finished); //Flags when we are done
+        printf("Finished token %lu\n", i + VOCAB_START);
+        sem_destroy(&sums_finished);
+        pthread_mutex_destroy(&sum_worker_lock);
+        Frequency *frequencies = reply_queue.pop(); //Pop the final frequency object
+        tokeniser.update_vocab(frequencies);
+        delete frequencies;
 
-
-        for(size_t j = 0; j < processor_count; j++) {
-            struct train_msg_t msg = reply_queue.pop();
-            if(msg.type != FREQUENCY_REPLY) {
-                fprintf(stderr, "Received a message that was not a frequency reply\n");
-                exit(151);
-            }
-
-            Frequency *frequency_p = msg.body.frequency.frequency_p;
-            frequencies[j] = frequency_p;
-            if(j % 2 == 0) {
-                //Sum the frequencies
-                processed+=2;
-            }
-        }
-
-        for()
-
-
+        tokeniser.write_vocab(vocab_filename, command_line_args.vocab_size);
     }
+    return 0;
 }   

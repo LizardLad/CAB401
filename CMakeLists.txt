@@ -14,7 +14,7 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add the executable
-add_executable(ThreadPoolExecutable main.cpp data.cpp dataset.cpp frequency.cpp tokeniser.cpp threadpool.cpp args.cpp)
+add_executable(ThreadPoolExecutable main.cpp data.cpp dataset.cpp frequency.cpp tokeniser.cpp threadpool.cpp args.cpp train.cpp status.cpp)
 target_include_directories(ThreadPoolExecutable PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 # Link pthread library

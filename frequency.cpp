@@ -1,12 +1,14 @@
 #include <cstddef>
 #include <cstring>
-#include <config.hpp>
+#include <utility>
+#include <stdexcept>
 #include <cassert>
 
 #include <omp.h>
 
 #include <frequency.hpp>
-#include <utility>
+#include <config.hpp>
+
 
 Frequency::Frequency(size_t max_size=1024)
 {
@@ -38,6 +40,9 @@ const size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) const {
 }
 
 size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) {
+    if(b1 >= this->max_size || b2 >= this->max_size) {
+        printf("Index out of bounds: %lu, %lu\n", b1, b2);
+    }
     assert(b1 < this->max_size &&  b2 < this->max_size);
     if(this->frequency[b1] == nullptr) {
         this->frequency[b1] = new size_t[this->max_size];

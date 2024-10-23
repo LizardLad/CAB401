@@ -28,9 +28,7 @@ class ThreadPool {
         ~ThreadPool();
 
         bool send(struct work_t work);
-
         struct work_t recv();
-
         static void* start(void *ctx);
 };
 
