@@ -7,6 +7,7 @@
 
 Dataset::Dataset(size_t chunk_size = CHUNK_SIZE) {
     this->cur = 0;
+    this->chunk_size = chunk_size;
     pthread_mutex_init(&this->lock, NULL);
 }
 
