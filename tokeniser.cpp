@@ -18,8 +18,8 @@ Tokeniser::Tokeniser(VOCAB_DTYPE initial_size = VOCAB_START) {
 Tokeniser::~Tokeniser() {
 }
 
-void Tokeniser::inplace_transform(Data *data) {
-    for(size_t i = 0; i < vocab.size(); i++) {
+void Tokeniser::inplace_transform(Data *data, VOCAB_DTYPE previous_runs=0) {
+    for(size_t i = previous_runs; i < vocab.size(); i++) {
         for(size_t j = 0; j < data->size()-1; j++) {
             size_t indxs[2] = {0, 0};
 

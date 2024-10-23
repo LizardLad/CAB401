@@ -31,7 +31,7 @@ Frequency::~Frequency()
 }
 
 const size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) const {
-    assert(b1 < this->max_size &&  b2 < this->max_size);
+    //assert(b1 < this->max_size &&  b2 < this->max_size);
     if(this->frequency[b1] == nullptr) {
         this->frequency[b1] = new size_t[this->max_size];
         memset(this->frequency[b1], 0, this->max_size * sizeof(size_t));
@@ -40,7 +40,7 @@ const size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) const {
 }
 
 size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) {
-    assert(b1 < this->max_size &&  b2 < this->max_size);
+    //assert(b1 < this->max_size &&  b2 < this->max_size);
     if(this->frequency[b1] == nullptr) {
         this->frequency[b1] = new size_t[this->max_size];
         memset(this->frequency[b1], 0, this->max_size * sizeof(size_t));

@@ -82,7 +82,7 @@ void train_vocab_worker(void *data) {
 
         switch(msg.type) {
             case DATA:
-                tokeniser.inplace_transform(msg.data);
+                tokeniser.inplace_transform(msg.data, current_vocab_size - VOCAB_START - 1);
                 tokeniser.count_pairs(msg.data, frequency_p);
                 break;
             case DATA_FIN:

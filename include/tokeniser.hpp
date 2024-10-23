@@ -24,7 +24,7 @@ class Tokeniser {
         Tokeniser(VOCAB_DTYPE initial_size, std::vector<struct Token> vocab);
         ~Tokeniser();
 
-        void inplace_transform(Data *data);
+        void inplace_transform(Data *data, VOCAB_DTYPE previous_runs);
         void update_vocab(Frequency *frequency);
         void count_pairs(Data *data, Frequency *frequency);
         void write_vocab(char *vocab_file, VOCAB_DTYPE desired_len);
