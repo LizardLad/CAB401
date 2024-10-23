@@ -19,7 +19,6 @@ class Frequency
         const size_t& operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) const;
 
         void add(Frequency &other);
-
         void get_max_pair(VOCAB_DTYPE *max_pair);
         void zero();
 };

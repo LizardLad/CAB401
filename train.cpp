@@ -153,7 +153,7 @@ int train(struct command_line_args command_line_args, uint32_t processor_count, 
         }
 
         for(size_t j = 0; j < processor_count; j++) { //Send the request for the frequency object
-            struct train_msg_t msg = {.type=DATA_FIN};
+            struct train_msg_t msg = {.type=DATA_FIN, .data=nullptr};
             comms_queue.push(msg);
         }
 

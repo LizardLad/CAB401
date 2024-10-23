@@ -36,12 +36,10 @@ class Data
         Data& operator=(const Data &other); // Copy assignment operator
 
         VOCAB_DTYPE& operator[] (size_t idx) {
-            assert(idx < this->buff_size);
             return this->buff[idx];
         }
 
         const VOCAB_DTYPE& operator[] (size_t idx) const {
-            assert(idx < this->buff_size);
             return this->buff[idx];
         }
 
@@ -53,6 +51,8 @@ class Data
         }
 
         void shrink();
+
+        void swap(Data &other);
 };
 
 #endif

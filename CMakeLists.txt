@@ -26,3 +26,5 @@ find_package(OpenMP REQUIRED)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(ThreadPoolExecutable PRIVATE OpenMP::OpenMP_CXX)
 endif()
+
+target_compile_options(ThreadPoolExecutable PRIVATE -fopenmp -march=native -mavx2 -g -O3 -Wall -Wextra -Wpedantic -Werror -Wno-error=unused-variable -Wno-error=unused-parameter -Wno-error=unused-function -Wno-error=unused-but-set-variable -Wno-error=unused-value -Wno-error=unused-label -Wno-error=unused-local-typedefs -Wno-error=unused-macros)

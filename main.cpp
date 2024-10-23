@@ -15,8 +15,8 @@
 #include <args.hpp>
 
 
-int main(int argc, char **argv, char **envp) {
-    const uint32_t processor_count = 2;//std::thread::hardware_concurrency();
+int main(int argc, char **argv) {
+    const uint32_t processor_count = 20;//std::thread::hardware_concurrency();
     ThreadPool *pool = new ThreadPool(processor_count);
 
     if(argc < 3) {

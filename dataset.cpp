@@ -34,7 +34,8 @@ void Dataset::prepare_chunks() {
 void Dataset::shuffle() {
     for (size_t i = this->chunk_views.size() - 1; i > 0; i--) {
         size_t j = rand() % i;
-        std::swap(this->chunk_views[i], this->chunk_views[j]);
+        //Swap the data
+        this->chunk_views[i].swap(this->chunk_views[j]);
     }
 }
 

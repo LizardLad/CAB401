@@ -40,9 +40,6 @@ const size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) const {
 }
 
 size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) {
-    if(b1 >= this->max_size || b2 >= this->max_size) {
-        printf("Index out of bounds: %lu, %lu\n", b1, b2);
-    }
     assert(b1 < this->max_size &&  b2 < this->max_size);
     if(this->frequency[b1] == nullptr) {
         this->frequency[b1] = new size_t[this->max_size];
@@ -93,10 +90,13 @@ void Frequency::add(Frequency &other) {
             memcpy(this->frequency[i], other.frequency[i], this->max_size * sizeof(size_t));
             continue;
         }
+        if(other.frequency[i] == nullptr) {
+            continue;
+        }
 
         #pragma omp simd
         for(size_t j = 0; j < this->max_size; j++) {
-            this->frequency[i][j] += other(i, j);
+            this->frequency[i][j] += other.frequency[i][j];
         }
     }
     return;

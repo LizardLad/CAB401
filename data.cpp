@@ -40,6 +40,7 @@ Data::Data(char *filename, size_t max_chunk_size) {
     //Get file size
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if(!file.is_open()) {
+        exit(200);
         throw std::runtime_error("Failed to open file");
     }
     this->buff_size = file.tellg();
@@ -126,15 +127,20 @@ Data::Data(const Data &other) {
     this->max_chunk_size = other.max_chunk_size;
     this->source = other.source;
 
-    if(other.buff) {
-        this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * other.buff_size);
-        this->source = SRC_BLOB;
-        if(this->buff == NULL) {
-            throw std::runtime_error("Failed to allocate memory for data");
-        }
-        std::copy(other.buff, other.buff + other.buff_size, this->buff);
+    if(this->source == SRC_CHUNK) {
+        this->buff = other.buff;
+        
     } else {
-        this->buff = nullptr;
+        if(other.buff) {
+            this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * other.buff_size);
+            this->source = SRC_BLOB;
+            if(this->buff == NULL) {
+                throw std::runtime_error("Failed to allocate memory for data");
+            }
+            std::copy(other.buff, other.buff + other.buff_size, this->buff);
+        } else {
+            this->buff = nullptr;
+        }
     }
 }
 
@@ -151,16 +157,38 @@ Data& Data::operator=(const Data &other) {
     this->max_chunk_size = other.max_chunk_size;
     this->source = other.source;
 
-    if(other.buff) {
-        this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * other.buff_size);
-        if(this->buff == NULL) {
-            throw std::runtime_error("Failed to allocate memory for data");
-        }
-        std::copy(other.buff, other.buff + other.buff_size, this->buff);
-        this->source = SRC_BLOB;
+    if(this->source == SRC_CHUNK) {
+        this->buff = other.buff;
     } else {
-        this->buff = nullptr;
+        if(other.buff) {
+            this->buff = (VOCAB_DTYPE *)malloc(sizeof(VOCAB_DTYPE) * other.buff_size);
+            if(this->buff == NULL) {
+                throw std::runtime_error("Failed to allocate memory for data");
+            }
+            std::copy(other.buff, other.buff + other.buff_size, this->buff);
+            this->source = SRC_BLOB;
+        } else {
+            this->buff = nullptr;
+        }
     }
 
     return *this;
+}
+
+void Data::swap(Data &other) {
+    VOCAB_DTYPE *tmp_buff = this->buff;
+    this->buff = other.buff;
+    other.buff = tmp_buff;
+
+    size_t tmp_buff_size = this->buff_size;
+    this->buff_size = other.buff_size;
+    other.buff_size = tmp_buff_size;
+
+    size_t tmp_max_chunk_size = this->max_chunk_size;
+    this->max_chunk_size = other.max_chunk_size;
+    other.max_chunk_size = tmp_max_chunk_size;
+
+    enum DataSource tmp_source = this->source;
+    this->source = other.source;
+    other.source = tmp_source;
 }
