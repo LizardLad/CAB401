@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cassert>
 
-#include <tokeniser.hpp>
 #include <config.hpp>
 
 enum DataSource {
