@@ -122,11 +122,16 @@ int train(struct command_line_args command_line_args, uint32_t processor_count, 
     //Training loops
 
     for(size_t i = 0; i < command_line_args.vocab_size-VOCAB_START; i++) {
+
+        //Transform the underlying data in parallel
         size_t dataset_underlying_data_size = dataset.data.size();
         #pragma omp parallel for
         for(size_t j = 0; j < dataset_underlying_data_size; j++) {
             tokeniser.inplace_transform(&dataset.data[j], i);
         }
+        //TODO use the thread pool already implemented with Pthreads and the thread safe Queue implementation
+        //FIXME optimisation.
+
         dataset.prepare_chunks();
         //dataset.shuffle(); //Not performing frequency prediction so no need to shuffle
 

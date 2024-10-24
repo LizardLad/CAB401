@@ -219,11 +219,12 @@ It was discussed earlier that the file level parallelism would be too rough of a
 However if "files" were to be replaced with "chunks" then the granularity would be more fine grained. The chunk
 can have a size that is controlled by the programmer and can be adjusted to suit the data being processed.
 
-If the ghost cell pattern is used then the dependence on the byte prior to a chunk can be handled. The chunks can
-also be created as a view to the original data so when the chunk is run through the transform the ghost cell 
-pattern can be used to ensure that the chunk is transformed correctly. When creating the chunks the boundry must 
-be checked to ensure that the chunk is not split in the middle of a byte pair that is to be replaced. 
-This only works when one byte pair replacement transformation has to take place.
+The tokenisation step has to be performed on a file in its entirety as the byte pairs are not guaranteed to not 
+span the chunk boundary. This means the tokenisation step has to be performed on each iteration, before creating 
+the chunked views of the data that can have the byte pair counting performed on them. 
+
+This improves load balance as the chunks can be distributed to the threads in a more balanced manner, however the
+tokenisation step could still potentially be poorly balanced.
 
 
 %Ghost cell pattern
@@ -232,6 +233,9 @@ This only works when one byte pair replacement transformation has to take place.
 
 \section{Mapping computation to processors}
 OpenMP SIMD, and a manually managed thread pool created with POSIX pthreads
+
+Use https://github.com/gcc-mirror/gcc/blob/1cb6c2eb3b8361d850be8e8270c597270a1a7967/libgomp/iter.c to show 
+that OpenMP is not optimal for this type of problem as the work division is 1/n to the next free thread
 
 \section{Timing and profiling}
 
