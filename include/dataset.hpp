@@ -2,12 +2,13 @@
 #define DATASET_HPP
 
 #include <vector>
+
+#include <tokeniser.hpp>
 #include <data.hpp>
 
 class Dataset
 {
     protected:
-        std::vector<Data> data;
         std::vector<Data> chunk_views; //Views of the data and not the actual data
 
         size_t cur;
@@ -16,6 +17,8 @@ class Dataset
         size_t chunk_size;
 
     public:
+        std::vector<Data> data;
+
         Dataset(size_t chunk_size);
         ~Dataset();
 

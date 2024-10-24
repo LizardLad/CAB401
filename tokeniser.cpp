@@ -44,6 +44,15 @@ void Tokeniser::inplace_transform(Data *data, VOCAB_DTYPE previous_runs=0) {
             data->operator[](indxs[0]) = vocab[i].token;
             data->operator[](indxs[1]) = SKIP_TOKEN;
         }
+
+        size_t skips = 0;
+        for(size_t i = 0; i < data->size(); i++) {  //Make the non skippable tokens contiguous
+            if(data->operator[](i) == SKIP_TOKEN) { //This improves branch prediction when counting pairs
+                skips++;
+                continue;
+            }
+            data->operator[](i-skips) = data->operator[](i);
+        }
     }
 }
 

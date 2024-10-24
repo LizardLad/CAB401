@@ -1,19 +1,26 @@
+#include <tokeniser.hpp>
 #include <config.hpp>
 #include <data.hpp>
+
 #include <fstream>
+#include <string.h>
+
+#define FILE_CHUNK_SIZE (1<<20) //1MB
 
 Data::Data() {
     this->source = SRC_MOVED;
     this->buff = nullptr;
     this->buff_size = 0;
     this->max_chunk_size = 0;
+    this->parent = nullptr;
 }
 
-Data::Data(VOCAB_DTYPE *data, size_t size, size_t max_chunk_size) {
+Data::Data(VOCAB_DTYPE *data, size_t size, size_t max_chunk_size, Data *parent) {
     this->max_chunk_size = max_chunk_size;
     this->source = SRC_CHUNK;
     this->buff_size = size;
     this->buff = data;
+    this->parent = parent;
 }
 
 Data::Data(char *data, size_t size, size_t max_chunk_size) {
@@ -29,7 +36,7 @@ Data::Data(char *data, size_t size, size_t max_chunk_size) {
     for(size_t i = 0; i < size; i++) {
         this->buff[i] = (VOCAB_DTYPE)data[i];
     }
-    
+    this->parent = nullptr;
 }
 
 Data::Data(char *filename, size_t max_chunk_size) {
@@ -51,11 +58,14 @@ Data::Data(char *filename, size_t max_chunk_size) {
 
     file.seekg(0, std::ios::beg);
 
-    //Read file into buffer
-    for(size_t i = 0; i < this->buff_size; i++) {
+    //Read file into buffer up until it is aligned to 64 bytes
+    size_t i = 0;
+    for(; i < this->buff_size; i++) {
         this->buff[i] = (VOCAB_DTYPE)file.get();
     }
+
     file.close(); //Close file
+    this->parent = nullptr;
 }
 
 Data::~Data() {
@@ -66,22 +76,26 @@ Data::~Data() {
 
 void Data::shrink() {
     size_t skips = 0;
-    for(int i = this->buff_size-1; i >= 0; i--) {
+    for(size_t i = 0; i < this->buff_size; i++) {
         if(this->buff[i] == SKIP_TOKEN) {
             skips++;
             continue;
         }
         this->buff[i-skips] = this->buff[i];
     }
+    if(skips == 0) {
+        return;
+    }
     VOCAB_DTYPE *new_buff = (VOCAB_DTYPE *)realloc(this->buff, sizeof(VOCAB_DTYPE) * (this->buff_size-skips));
     if(new_buff != NULL) {
         this->buff = new_buff;
+        this->buff_size -= skips;
     } //Doesn't really matter if it fails because the new size is smaller
 }
 
 
 
-Data Data::get_chunk(size_t idx) {
+Data Data::get_chunk(size_t idx) { //Use ghost cell pattern by including the first element of the next chunk
     if(this->source == SRC_MOVED) {
         throw std::runtime_error("Cannot get chunk from moved data");
     }
@@ -90,11 +104,12 @@ Data Data::get_chunk(size_t idx) {
     }
     
     size_t start = idx * this->max_chunk_size;
-    size_t end = (idx+1) * this->max_chunk_size;
+    size_t end = (idx+1) * this->max_chunk_size + 1; //Include the first byte of the next cell (ghost cell pattern)
     if(end > this->buff_size) {
         end = this->buff_size;
     }
-    return Data(this->buff + start, end - start, this->max_chunk_size);
+
+    return Data(this->buff + start, end - start, this->max_chunk_size, this);
 }
 
 size_t Data::chunks() {
@@ -114,11 +129,13 @@ Data::Data(Data &&other) noexcept {
     this->buff_size = other.buff_size;
     this->source = other.source;
     this->max_chunk_size = other.max_chunk_size;
+    this->parent = other.parent;
 
     other.buff = nullptr;
     other.buff_size = 0;
     other.source = SRC_MOVED;
     other.max_chunk_size = 0;
+    other.parent = nullptr;
 }
 
 
@@ -142,6 +159,8 @@ Data::Data(const Data &other) {
             this->buff = nullptr;
         }
     }
+
+    this->parent = other.parent;
 }
 
 // Copy assignment operator
@@ -171,6 +190,8 @@ Data& Data::operator=(const Data &other) {
             this->buff = nullptr;
         }
     }
+
+    this->parent = other.parent;
 
     return *this;
 }

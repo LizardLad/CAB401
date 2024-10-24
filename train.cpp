@@ -71,7 +71,7 @@ void train_vocab_worker(void *data) {
     VOCAB_DTYPE current_vocab_size = arg_p->current_vocab_size;
     Queue<struct train_msg_t> *queue = arg_p->queue;
     Queue<Frequency *> *reply = arg_p->reply;
-    Tokeniser tokeniser(arg_p->initial_size_of_vocab, *arg_p->vocab); //Initial size of 256 for the vocab
+    Tokeniser tokeniser(arg_p->initial_size_of_vocab, *arg_p->vocab);
 
     free(arg_p);
 
@@ -82,7 +82,7 @@ void train_vocab_worker(void *data) {
 
         switch(msg.type) {
             case DATA:
-                tokeniser.inplace_transform(msg.data, current_vocab_size - VOCAB_START - 1);
+                //tokeniser.inplace_transform(msg.data, current_vocab_size - VOCAB_START - 1);
                 tokeniser.count_pairs(msg.data, frequency_p);
                 break;
             case DATA_FIN:
@@ -122,8 +122,13 @@ int train(struct command_line_args command_line_args, uint32_t processor_count, 
     //Training loops
 
     for(size_t i = 0; i < command_line_args.vocab_size-VOCAB_START; i++) {
+        size_t dataset_underlying_data_size = dataset.data.size();
+        #pragma omp parallel for
+        for(size_t j = 0; j < dataset_underlying_data_size; j++) {
+            tokeniser.inplace_transform(&dataset.data[j], i);
+        }
         dataset.prepare_chunks();
-        dataset.shuffle();
+        //dataset.shuffle(); //Not performing frequency prediction so no need to shuffle
 
         //Initialize the Queues
         Queue<struct train_msg_t> comms_queue(QUEUE_SIZE);

@@ -3,8 +3,10 @@
 
 #include <vector>
 #include <cstddef>
-#include <config.hpp>
 #include <cassert>
+
+#include <tokeniser.hpp>
+#include <config.hpp>
 
 enum DataSource {
     SRC_FILE,
@@ -21,13 +23,15 @@ class Data
 
         size_t max_chunk_size;
 
+        Data *parent;
+
     public:
         enum DataSource source;
         
         Data();
         Data(char *data, size_t size, size_t max_chunk_size);
         Data(char *filename, size_t max_chunk_size); //From file
-        Data(VOCAB_DTYPE *data, size_t size, size_t max_chunk_size); //From another data object to create chunks
+        Data(VOCAB_DTYPE *data, size_t size, size_t max_chunk_size, Data *parent = nullptr); //From another data object to create chunks
 
         ~Data();
         Data(Data &&other) noexcept; //Move

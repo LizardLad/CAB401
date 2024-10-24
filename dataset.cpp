@@ -1,9 +1,11 @@
 #include <vector>
+#include <stdexcept>
 #include <pthread.h>
 
 #include <data.hpp>
 #include <dataset.hpp>
-#include <stdexcept>
+#include <tokeniser.hpp>
+
 
 Dataset::Dataset(size_t chunk_size = CHUNK_SIZE) {
     this->cur = 0;
@@ -21,9 +23,12 @@ void Dataset::prepare_chunks() {
     pthread_mutex_lock(&this->lock);
 
     chunk_views.clear();
+    #pragma omp parallel for
     for (size_t i = 0; i < data.size(); i++) {
+        data[i].shrink(); //Actually required for logical correctness when dealing with chunks
         for (size_t j = 0; j < data[i].chunks(); j++) {
             Data chunk = data[i].get_chunk(j);
+            #pragma omp critical
             this->chunk_views.push_back(chunk);
         }
     }
