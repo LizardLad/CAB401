@@ -224,24 +224,61 @@ span the chunk boundary. This means the tokenisation step has to be performed on
 the chunked views of the data that can have the byte pair counting performed on them. 
 
 This improves load balance as the chunks can be distributed to the threads in a more balanced manner, however the
-tokenisation step could still potentially be poorly balanced.
-
-
-%Ghost cell pattern
-
-
+tokenisation step could still potentially be poorly balanced. This lead to the choice behind the methods of 
+mapping the computation to the processors.
 
 \section{Mapping computation to processors}
-OpenMP SIMD, and a manually managed thread pool created with POSIX pthreads
+A number of tools were considered for the parallelisation of the application. The first tool considered was OpenMP.
+OpenMP could be used to parallelise the loops using the \mintinline{c}{#pragma omp parallel for} directive. 
+This would greatly simplify the implementation process, however it would also leave performance on the table.
 
-Use https://github.com/gcc-mirror/gcc/blob/1cb6c2eb3b8361d850be8e8270c597270a1a7967/libgomp/iter.c to show 
-that OpenMP is not optimal for this type of problem as the work division is 1/n to the next free thread
+As found in the GCC implementation of OpenMP the work is divided to threads in an unequal manner\ref{gcc_omp}.
+As 1/n of the iterations are provided to the next free thread, the first thread ends up with most of the work.
+This is not ideal, particularly if the file paths are delivered to the program in a descending order of file size.
+This would lead to many threads stalling while the program waits on all threads to finish.
+
+The next tool considered was POSIX pthreads. This would allow for a more fine grained control over the work 
+division. A thread pool construct was built from scratch to manage the threads. The thread pool took a function pointer
+and a void pointer to the function argument from a hand made thread safe FIFO queue implementation. 
+When a thread was free it pulled the next task from queue. This ensured that if a thread was free it would 
+always be able to request more work.
+
+This meant that if there was no requirement for synchronisation between different tasks then the next task could 
+be added to the queue so the pool could initiate work on it without delaying for synchronisation.
+
+
+\subsection{Queue class implementation}
+The queue was implemented as a circular buffer, which was an array of pointers with a mutex and two semaphores. One semaphore signaled when 
+the queue had space to add a new element, and the other signaled when the queue was non empty. The mutex was used
+to protect the indicies of the circular buffer from being modified by multiple threads at once.
+
+The implementation of the queue resulted in a very small memory footprint. This meant that the queue was 
+fast to access and modify.
+
+\subsection{ThreadPool class implementation}
+The threadpool was implemented as a class that took a number of desired threads in the constructor and launched
+each thread to a function in the class. This \mintinline{C}{ThreadPool::start(void *arg)} function allowed the
+thread to pull tasks from the threadsafe queue and execute them.
+
+The class also implemented a destructor to join all the threads and free the memory used by the threads, abiding
+by the RAII principle.
+
 
 \section{Timing and profiling}
 
 \section{Testing of logical equivalence}
 
 \section{Tools used}
+
+To compile the parallel application GCC-12 was used with the -O3, -fopenmp, and -lpthread flags. When debugging 
+the application the \textit{strace} tool was particularly helpful. This allowed insight into the system calls that
+the application was making. This was useful to determine why particular threads were going to sleep or not grabbing
+work from the queue. \textit{-fsanatize=address} was also invaluable in finding memory related bugs in the program.
+There were instances where race conditions occured, particularly use after free bugs due to destructors being called
+on data before threads had finished using it.
+
+Intel Advisor was then used to profile the application. The roofline analysis was particularly useful to determine 
+which loops were worth optimising further and which were not.
 
 \section{Process and Problems encountered}
 
@@ -250,5 +287,7 @@ that OpenMP is not optimal for this type of problem as the work division is 1/n 
 \section{Learnings}
 
 
+\section{References}
+https://github.com/gcc-mirror/gcc/blob/1cb6c2eb3b8361d850be8e8270c597270a1a7967/libgomp/iter.c
 
 \end{document}
