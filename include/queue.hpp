@@ -110,16 +110,6 @@ T Queue<T>::pop() { //Blocking
 }
 
 template <typename T>
-size_t Queue<T>::size() {
-    //The number of stored items is the distance between the read and write heads.
-    //It is 0 if they are equal
-    //The write should be on the right of the read head if the queue is not empty
-    //Since the buffer is circular the write head could be at 100 and the read head at 0 then size=100
-    //If the read head is at 100 and the write head is at  0 then size=0
-    return (size_t)((ssize_t)write_head - (ssize_t)read_head + (ssize_t)capacity) % capacity;
-}
-
-template <typename T>
 std::vector<T> Queue<T>::popn(size_t n) {
     if(!multi_grab) {
         throw std::runtime_error("Multi grab not enabled");
@@ -131,6 +121,16 @@ std::vector<T> Queue<T>::popn(size_t n) {
     }
     pthread_mutex_unlock(&this->multi_grab_lock);
     return items;
+}
+
+template <typename T>
+size_t Queue<T>::size() {
+    //The number of stored items is the distance between the read and write heads.
+    //It is 0 if they are equal
+    //The write should be on the right of the read head if the queue is not empty
+    //Since the buffer is circular the write head could be at 100 and the read head at 0 then size=100
+    //If the read head is at 100 and the write head is at  0 then size=0
+    return (size_t)((ssize_t)write_head - (ssize_t)read_head + (ssize_t)capacity) % capacity;
 }
 
 #endif

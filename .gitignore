@@ -1,2 +1,16 @@
 .vscode/
 build/
+html/
+latex/
+svg-inkscape/
+*.out
+Doxyfile
+*.log
+*.vocab
+*.aux
+*.fdb_latexmk
+*.fls
+*.loa
+*.synctex.gz
+*.toc
+_minted-report/

@@ -20,7 +20,7 @@ class Tokeniser {
     public: 
         std::vector<struct Token> vocab;
 
-        Tokeniser(VOCAB_DTYPE initial_size);
+        Tokeniser(VOCAB_DTYPE initial_size = VOCAB_START);
         Tokeniser(VOCAB_DTYPE initial_size, std::vector<struct Token> vocab);
         ~Tokeniser();
 
@@ -28,6 +28,8 @@ class Tokeniser {
         void update_vocab(Frequency *frequency);
         void count_pairs(Data *data, Frequency *frequency);
         void write_vocab(char *vocab_file, VOCAB_DTYPE desired_len);
+
+        void to_JSON(VOCAB_DTYPE desired_len);
 };
 
 #endif
