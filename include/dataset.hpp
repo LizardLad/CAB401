@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <tokeniser.hpp>
+#include <config.hpp>
 #include <data.hpp>
 
 class Dataset
@@ -19,7 +20,7 @@ class Dataset
     public:
         std::vector<Data> data;
 
-        Dataset(size_t chunk_size);
+        Dataset(size_t chunk_size = CHUNK_SIZE);
         ~Dataset();
 
         void shuffle();

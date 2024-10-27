@@ -7,7 +7,7 @@
 #include <tokeniser.hpp>
 
 
-Dataset::Dataset(size_t chunk_size = CHUNK_SIZE) {
+Dataset::Dataset(size_t chunk_size) {
     this->cur = 0;
     this->chunk_size = chunk_size;
     pthread_mutex_init(&this->lock, NULL);
@@ -25,7 +25,6 @@ void Dataset::prepare_chunks() {
     chunk_views.clear();
     #pragma omp parallel for
     for (size_t i = 0; i < data.size(); i++) {
-        data[i].shrink(); //Actually required for logical correctness when dealing with chunks
         for (size_t j = 0; j < data[i].chunks(); j++) {
             Data chunk = data[i].get_chunk(j);
             #pragma omp critical

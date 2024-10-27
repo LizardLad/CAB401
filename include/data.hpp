@@ -53,7 +53,7 @@ class Data
             return buff_size;
         }
 
-        void shrink();
+        void shrink(size_t new_size);
 
         void swap(Data &other);
 };

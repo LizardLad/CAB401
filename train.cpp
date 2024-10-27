@@ -95,6 +95,39 @@ void train_vocab_worker(void *data) {
     return;
 }
 
+struct transform_args_t {
+    Tokeniser *tokeniser;
+    Data *data;
+    sem_t *transform_complete;
+    VOCAB_DTYPE vocab_size;
+    size_t *transforms;
+    size_t total_tranforms;
+    pthread_mutex_t *lock;
+};
+
+void transform_worker(void *arg) {
+    struct transform_args_t *args = (struct transform_args_t *)arg;
+    Tokeniser *tokeniser = args->tokeniser;
+    Data *data = args->data;
+    VOCAB_DTYPE vocab_size = args->vocab_size;
+
+    if(vocab_size != 0) {
+        tokeniser->inplace_transform(data, vocab_size-1); //Perform the transformation at the top of the stack
+    }
+    
+    pthread_mutex_lock(args->lock);
+    (*args->transforms)++;
+    
+
+    if(*(args->transforms) == args->total_tranforms) {
+        sem_post(args->transform_complete);
+    }
+    pthread_mutex_unlock(args->lock);
+
+    free(args);
+    return;
+}
+
 int train(struct command_line_args command_line_args, uint32_t processor_count, ThreadPool *pool) {
     if(command_line_args.vocab_size <= 256) {
         fprintf(stderr, "Vocab count too low\n");
@@ -122,15 +155,36 @@ int train(struct command_line_args command_line_args, uint32_t processor_count, 
     //Training loops
 
     for(size_t i = 0; i < command_line_args.vocab_size-VOCAB_START; i++) {
+        sem_t transform_complete;
+        sem_init(&transform_complete, 0, 0);
+
+        pthread_mutex_t transform_lock;
+        size_t transforms = 0;
+        pthread_mutex_init(&transform_lock, nullptr);
 
         //Transform the underlying data in parallel
         size_t dataset_underlying_data_size = dataset.data.size();
-        #pragma omp parallel for
         for(size_t j = 0; j < dataset_underlying_data_size; j++) {
-            tokeniser.inplace_transform(&dataset.data[j], i);
+            struct transform_args_t *args = (struct transform_args_t *)malloc(sizeof(struct transform_args_t));
+            if(args == nullptr) {
+                exit(150);
+            }
+            
+            args->tokeniser=&tokeniser;
+            args->data=&(dataset.data[j]); 
+            args->transform_complete=&transform_complete;
+            args->vocab_size=i;
+            args->transforms=&transforms;
+            args->total_tranforms=dataset_underlying_data_size;
+            args->lock=&transform_lock;
+
+            pool->send({.fn=transform_worker, .data=(void*)args});
         }
         //TODO use the thread pool already implemented with Pthreads and the thread safe Queue implementation
         //FIXME optimisation.
+
+        sem_wait(&transform_complete);
+        sem_destroy(&transform_complete);
 
         dataset.prepare_chunks();
         //dataset.shuffle(); //Not performing frequency prediction so no need to shuffle

@@ -12,7 +12,7 @@ class Frequency
         size_t max_size;
         size_t len;
     public:
-        Frequency(size_t max_size);
+        Frequency(size_t max_size=1024);
         ~Frequency();
         
         size_t& operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2);

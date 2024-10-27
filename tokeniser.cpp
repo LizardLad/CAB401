@@ -11,7 +11,7 @@
 #include <tokeniser.hpp>
 
 
-Tokeniser::Tokeniser(VOCAB_DTYPE initial_size = VOCAB_START) {
+Tokeniser::Tokeniser(VOCAB_DTYPE initial_size) {
     this->initial_size = initial_size;
 }
 
@@ -19,6 +19,9 @@ Tokeniser::~Tokeniser() {
 }
 
 void Tokeniser::inplace_transform(Data *data, VOCAB_DTYPE previous_runs=0) {
+    if (data->size() == 0) {
+        return;
+    }
     for(size_t i = previous_runs; i < vocab.size(); i++) {
         for(size_t j = 0; j < data->size()-1; j++) {
             size_t indxs[2] = {0, 0};
@@ -28,46 +31,54 @@ void Tokeniser::inplace_transform(Data *data, VOCAB_DTYPE previous_runs=0) {
             }
             indxs[0] = j;
 
-            for(j++; j < data->size(); j++) {
-                if(data->operator[](j) == SKIP_TOKEN) {
+            size_t k = j + 1;
+            for(; k < data->size(); k++) {
+                if(data->operator[](k) == SKIP_TOKEN) {
                     continue;
                 }
-                if(data->operator[](j) != vocab[i].pair[1]) {
-                    break;
+                if(data->operator[](k) == vocab[i].pair[1]) {
+                    indxs[1] = k;
                 }
-                indxs[1] = j;
+
                 break;
             }
             if(indxs[1] == 0) {
                 continue;
             }
+
             data->operator[](indxs[0]) = vocab[i].token;
             data->operator[](indxs[1]) = SKIP_TOKEN;
+            j = k;
         }
 
+        //Remove the SKIP_TOKENS, needed for logical correctness when using chunks
         size_t skips = 0;
-        for(size_t i = 0; i < data->size(); i++) {  //Make the non skippable tokens contiguous
-            if(data->operator[](i) == SKIP_TOKEN) { //This improves branch prediction when counting pairs
+        for(size_t m = 0; m < data->size(); m++) {  //Make the non skippable tokens contiguous
+            if(data->operator[](m) == SKIP_TOKEN) { //This improves branch prediction when counting pairs
                 skips++;
                 continue;
             }
-            data->operator[](i-skips) = data->operator[](i);
+            data->operator[](m-skips) = data->operator[](m);
         }
+        data->shrink(data->size()-skips);
     }
 }
 
 void Tokeniser::count_pairs(Data *data, Frequency *frequency) {
-    for(size_t i = 0; i < data->size()-1; i++) {
+    size_t len = data->size();
+    for(size_t i = 0; i < len-1; i++) {
         if(data->operator[](i) == SKIP_TOKEN) {
             continue;
         }
         VOCAB_DTYPE token = data->operator[](i);
-        for(i++; i < data->size(); i++) {
+
+        for(i++; i < len; i++) {
             if(data->operator[](i) == SKIP_TOKEN) {
                 continue;
             }
             //printf("Counting pair %d %d\n", token, data->operator[](i));
             frequency->operator()(token, data->operator[](i))++;
+            i--;
             break;
         }
     }
@@ -99,7 +110,7 @@ void Tokeniser::write_vocab(char *vocab_file, VOCAB_DTYPE desired_len) {
 
     FILE *vocab_file_p = fopen(tmp_name, "wb");
     struct vocab_file_header_t header = {.preamble={'V', 'O', 'C', 'A', 'B'}, 
-    .complete=(vocab.size()==desired_len), 
+    .complete=(vocab.size()+VOCAB_START==desired_len), 
     .len = (VOCAB_DTYPE)vocab.size(), 
     .desired_len=desired_len};
 
@@ -111,4 +122,16 @@ void Tokeniser::write_vocab(char *vocab_file, VOCAB_DTYPE desired_len) {
     //Move the file (atomic)
     fclose(vocab_file_p);
     rename(tmp_name, vocab_file);
+}
+
+void Tokeniser::to_JSON(VOCAB_DTYPE desired_len) {
+    fprintf(stdout, "{\"complete\":%s,\"desired_size\":%hu,\"vocab\":[", 
+    (vocab.size()+VOCAB_START==desired_len) ? "true" : "false", desired_len);
+    for(size_t i = 0; i < vocab.size(); i++) {
+        fprintf(stdout, "{\"b1\":%hu,\"b2\":%hu,\"rep\":%hu}", vocab[i].pair[0], vocab[i].pair[1], vocab[i].token);
+        if(i != vocab.size()-1) {
+            fprintf(stdout, ",");
+        }
+    }
+    fprintf(stdout, "]}\n");
 }

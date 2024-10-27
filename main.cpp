@@ -10,6 +10,7 @@
 #include <frequency.hpp>
 #include <tokeniser.hpp>
 #include <dataset.hpp>
+#include <status.hpp>
 #include <train.hpp>
 #include <data.hpp>
 #include <args.hpp>
@@ -43,6 +44,7 @@ int main(int argc, char **argv) {
             train(command_line_args, processor_count, pool);
             break;
         case MODE_STATUS:
+            return status(command_line_args);
             break;
         default:
             fprintf(stderr, "Bad mode\n");

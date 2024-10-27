@@ -74,23 +74,11 @@ Data::~Data() {
     }
 }
 
-void Data::shrink() {
-    size_t skips = 0;
-    for(size_t i = 0; i < this->buff_size; i++) {
-        if(this->buff[i] == SKIP_TOKEN) {
-            skips++;
-            continue;
-        }
-        this->buff[i-skips] = this->buff[i];
-    }
-    if(skips == 0) {
+void Data::shrink(size_t new_size) {
+    if(new_size >= this->buff_size) {
         return;
     }
-    VOCAB_DTYPE *new_buff = (VOCAB_DTYPE *)realloc(this->buff, sizeof(VOCAB_DTYPE) * (this->buff_size-skips));
-    if(new_buff != NULL) {
-        this->buff = new_buff;
-        this->buff_size -= skips;
-    } //Doesn't really matter if it fails because the new size is smaller
+    this->buff_size = new_size;
 }
 
 

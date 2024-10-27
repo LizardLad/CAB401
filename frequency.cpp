@@ -10,7 +10,7 @@
 #include <config.hpp>
 
 
-Frequency::Frequency(size_t max_size=1024)
+Frequency::Frequency(size_t max_size)
 {
     frequency = new size_t*[max_size];
     for(size_t i = 0; i < max_size; i++) {
@@ -49,11 +49,11 @@ size_t& Frequency::operator() (VOCAB_DTYPE b1, VOCAB_DTYPE b2) {
 }
 
 void Frequency::get_max_pair(VOCAB_DTYPE *max_pair) {
-    
     max_pair[0] = 0;
     max_pair[1] = 0;
     
     size_t max = 0;
+
     for(size_t i = 0; i < this->max_size; i++) {
         if(this->frequency[i] == nullptr) {
             continue;
